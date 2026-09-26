@@ -95,9 +95,9 @@ export default function TaskList({ selectedDate, setSelectedDate, days, setDays 
                   />
                 </label>
                 <span
-                  className="priority-dot"
-                  style={{ backgroundColor: cfg.color }}
-                  title={cfg.label}
+                  className="priority-indicator"
+                  style={{ '--pcolor': cfg.color }}
+                  title={`${cfg.label} priority`}
                 ></span>
                 <input
                   type="text"
@@ -105,9 +105,6 @@ export default function TaskList({ selectedDate, setSelectedDate, days, setDays 
                   value={task.title}
                   onChange={(e) => editTask(task.id, e.target.value)}
                 />
-                <span className="priority-label" style={{ color: cfg.color, backgroundColor: cfg.bg }}>
-                  {cfg.label}
-                </span>
                 <button className="btn-icon btn-delete" onClick={() => deleteTask(task.id)} title="Delete">
                   Delete
                 </button>

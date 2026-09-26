@@ -6,6 +6,7 @@ import Sidebar from './components/Sidebar'
 import Dashboard from './components/Dashboard'
 import TaskList from './components/TaskList'
 import Journal from './components/Journal'
+import RecurringTasks from './components/RecurringTasks'
 import AddTaskModal from './components/AddTaskModal'
 import './App.css'
 
@@ -150,6 +151,13 @@ function App() {
             setSelectedDate={handleSetSelectedDate}
             days={days}
             setDays={setDays}
+          />
+        )
+      case 'recurring':
+        return (
+          <RecurringTasks
+            scheduledTasks={scheduledTasks}
+            setScheduledTasks={setScheduledTasks}
           />
         )
       case 'journal':

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { formatDateKey, parseDateKey, todayKey } from '../utils/date'
-import { WEEKDAY_NAMES } from '../utils/schedule'
 
 // Distinct colors for each recurring task
 const TASK_COLORS = [
@@ -14,36 +13,39 @@ const TASK_COLORS = [
   '#84cc16', // lime
 ]
 
-function getYearWeeks(year) {
-  // Build weeks starting from the first Sunday of the year (or last Sunday of prev year)
-  const weeks = []
-  const jan1 = new Date(year, 0, 1)
-  const startDay = jan1.getDay() // 0=Sun..6=Sat
-  const startDate = new Date(jan1)
-  startDate.setDate(startDate.getDate() - startDay)
-
+/**
+ * Build the last `numWeeks` weeks ending at today (inclusive).
+ * Each week is an array of 7 Date objects (Sun..Sat).
+ * The last week contains today.
+ */
+function getLastNWeeks(numWeeks) {
   const today = new Date()
-  today.setHours(23, 59, 59, 999)
+  today.setHours(0, 0, 0, 0)
 
-  let current = new Date(startDate)
-  while (current.getFullYear() <= year || (current.getFullYear() === year && current.getMonth() === 0)) {
+  // Find the Sunday of the current week
+  const sunday = new Date(today)
+  sunday.setDate(sunday.getDate() - sunday.getDay())
+
+  const weeks = []
+  // Start from the Sunday that is numWeeks-1 weeks before the current week's Sunday
+  const start = new Date(sunday)
+  start.setDate(start.getDate() - (numWeeks - 1) * 7)
+
+  let current = new Date(start)
+  for (let w = 0; w < numWeeks; w++) {
     const week = []
     for (let d = 0; d < 7; d++) {
       const cellDate = new Date(current)
       week.push(cellDate)
       current.setDate(current.getDate() + 1)
     }
-    // Stop if we've gone past today and past the year
-    if (week[0] > today && week[0].getFullYear() > year) break
     weeks.push(week)
-    if (current > today && current.getFullYear() > year) break
   }
   return weeks
 }
 
 function getIntensity(done, color) {
   if (!done) return { background: '#ebedf0', level: 0 }
-  // Intensity levels based on completion
   if (done >= 3) return { background: color, level: 4, opacity: 1 }
   if (done >= 2) return { background: color, level: 3, opacity: 0.75 }
   if (done >= 1) return { background: color, level: 2, opacity: 0.5 }
@@ -53,15 +55,9 @@ function getIntensity(done, color) {
 const WEEKDAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function SingleTaskHeatmap({ task, days, color, year, onEdit, onDelete }) {
+function SingleTaskHeatmap({ task, days, color }) {
   const [tooltip, setTooltip] = useState(null)
-  const [editing, setEditing] = useState(false)
-  const [editTitle, setEditTitle] = useState(task.title)
-  const [editPriority, setEditPriority] = useState(task.priority || 'medium')
-  const [editFrequency, setEditFrequency] = useState(task.frequency)
-  const [editDayOfWeek, setEditDayOfWeek] = useState(task.dayOfWeek ?? 0)
-  const [editDayOfMonth, setEditDayOfMonth] = useState(task.dayOfMonth ?? 1)
-  const weeks = getYearWeeks(year)
+  const weeks = getLastNWeeks(53) // ~1 year
   const today = todayKey()
 
   // Calculate stats for this task
@@ -110,129 +106,27 @@ function SingleTaskHeatmap({ task, days, color, year, onEdit, onDelete }) {
     checkDate.setDate(checkDate.getDate() - 1)
   }
 
-  // Month labels for the top
+  // Month labels for the top — detect month boundaries
   const monthLabels = []
   let lastMonth = -1
   weeks.forEach((week, weekIdx) => {
     const firstDay = week[0]
-    if (firstDay.getMonth() !== lastMonth && firstDay.getDate() <= 7) {
+    if (firstDay.getMonth() !== lastMonth) {
       monthLabels.push({ idx: weekIdx, label: MONTH_LABELS[firstDay.getMonth()] })
       lastMonth = firstDay.getMonth()
     }
   })
 
-  const handleSaveEdit = () => {
-    const trimmed = editTitle.trim()
-    if (!trimmed) return
-    onEdit(task.id, {
-      title: trimmed,
-      priority: editPriority,
-      frequency: editFrequency,
-      dayOfWeek: editFrequency === 'weekly' ? Number(editDayOfWeek) : null,
-      dayOfMonth: editFrequency === 'monthly' ? Number(editDayOfMonth) : null,
-    })
-    setEditing(false)
-  }
-
-  const handleCancelEdit = () => {
-    setEditTitle(task.title)
-    setEditPriority(task.priority || 'medium')
-    setEditFrequency(task.frequency)
-    setEditDayOfWeek(task.dayOfWeek ?? 0)
-    setEditDayOfMonth(task.dayOfMonth ?? 1)
-    setEditing(false)
-  }
+  // Determine which weeks are the first week of a new month (for spacing)
+  const monthStartWeeks = new Set(monthLabels.map((m) => m.idx))
 
   return (
     <div className="task-heatmap-card">
       <div className="task-heatmap-header">
         <span className="task-heatmap-dot" style={{ backgroundColor: color }}></span>
-        {editing ? (
-          <input
-            className="th-edit-input"
-            type="text"
-            value={editTitle}
-            onChange={(e) => setEditTitle(e.target.value)}
-            autoFocus
-          />
-        ) : (
-          <span className="task-heatmap-title">{task.title}</span>
-        )}
+        <span className="task-heatmap-title">{task.title}</span>
         <span className="task-heatmap-freq">{task.frequency}</span>
-        {!editing && (
-          <div className="th-actions">
-            <button className="th-action-btn" onClick={() => setEditing(true)} title="Edit">
-              ✎
-            </button>
-            <button
-              className="th-action-btn th-delete-btn"
-              onClick={() => {
-                if (window.confirm(`Delete recurring task "${task.title}"?`)) {
-                  onDelete(task.id)
-                }
-              }}
-              title="Delete"
-            >
-              🗑
-            </button>
-          </div>
-        )}
       </div>
-
-      {editing && (
-        <div className="th-edit-form">
-          <div className="th-edit-row">
-            <div className="th-edit-field">
-              <label>Priority</label>
-              <select value={editPriority} onChange={(e) => setEditPriority(e.target.value)}>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
-            <div className="th-edit-field">
-              <label>Frequency</label>
-              <select value={editFrequency} onChange={(e) => setEditFrequency(e.target.value)}>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </div>
-            {editFrequency === 'weekly' && (
-              <div className="th-edit-field">
-                <label>Day of week</label>
-                <select value={editDayOfWeek} onChange={(e) => setEditDayOfWeek(e.target.value)}>
-                  {WEEKDAY_NAMES.map((d, i) => (
-                    <option key={d} value={i}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {editFrequency === 'monthly' && (
-              <div className="th-edit-field">
-                <label>Day of month</label>
-                <select value={editDayOfMonth} onChange={(e) => setEditDayOfMonth(e.target.value)}>
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                    <option key={d} value={d}>
-                      {d}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-          <div className="th-edit-buttons">
-            <button className="th-edit-cancel" onClick={handleCancelEdit}>
-              Cancel
-            </button>
-            <button className="th-edit-save" onClick={handleSaveEdit}>
-              Save
-            </button>
-          </div>
-        </div>
-      )}
 
       <div className="task-heatmap-stats">
         <div className="th-stat">
@@ -260,7 +154,10 @@ function SingleTaskHeatmap({ task, days, color, year, onEdit, onDelete }) {
           {weeks.map((_, weekIdx) => {
             const monthLabel = monthLabels.find((m) => m.idx === weekIdx)
             return (
-              <span key={weekIdx} className="th-month-label">
+              <span
+                key={weekIdx}
+                className={`th-month-label ${monthStartWeeks.has(weekIdx) && weekIdx > 0 ? 'th-month-gap' : ''}`}
+              >
                 {monthLabel ? monthLabel.label : ''}
               </span>
             )
@@ -277,10 +174,12 @@ function SingleTaskHeatmap({ task, days, color, year, onEdit, onDelete }) {
           </div>
           <div className="task-heatmap-grid">
             {weeks.map((week, weekIdx) => (
-              <div key={weekIdx} className="th-week">
+              <div
+                key={weekIdx}
+                className={`th-week ${monthStartWeeks.has(weekIdx) && weekIdx > 0 ? 'th-week-month-start' : ''}`}
+              >
                 {week.map((date) => {
                   const dateKey = formatDateKey(date)
-                  const isCurrentYear = date.getFullYear() === year
                   const isFuture = date > new Date()
                   const dayData = days[dateKey]
                   const tasks = dayData?.tasks || []
@@ -298,7 +197,7 @@ function SingleTaskHeatmap({ task, days, color, year, onEdit, onDelete }) {
                         opacity: doneCount > 0 ? intensity.opacity : 1,
                       }}
                       onMouseEnter={(e) => {
-                        if (isCurrentYear && !isFuture) {
+                        if (!isFuture) {
                           const rect = e.target.getBoundingClientRect()
                           setTooltip({
                             x: rect.left + rect.width / 2,
@@ -342,20 +241,7 @@ function SingleTaskHeatmap({ task, days, color, year, onEdit, onDelete }) {
   )
 }
 
-export default function TaskHeatmap({ scheduledTasks, setScheduledTasks, days }) {
-  const currentYear = new Date().getFullYear()
-  const [year, setYear] = useState(currentYear)
-
-  const handleEdit = (taskId, updates) => {
-    setScheduledTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
-    )
-  }
-
-  const handleDelete = (taskId) => {
-    setScheduledTasks((prev) => prev.filter((t) => t.id !== taskId))
-  }
-
+export default function TaskHeatmap({ scheduledTasks, days }) {
   if (!scheduledTasks || scheduledTasks.length === 0) {
     return (
       <div className="dash-section">
@@ -371,13 +257,7 @@ export default function TaskHeatmap({ scheduledTasks, setScheduledTasks, days })
     <div className="dash-section">
       <div className="task-heatmap-section-header">
         <h3 className="dash-section-title">Recurring Task Progress</h3>
-        <div className="heatmap-year-nav">
-          <button onClick={() => setYear(year - 1)}>‹</button>
-          <span>{year}</span>
-          {year < currentYear && (
-            <button onClick={() => setYear(year + 1)}>›</button>
-          )}
-        </div>
+        <span className="th-range-label">Last 12 months</span>
       </div>
 
       <div className="task-heatmap-list">
@@ -387,9 +267,6 @@ export default function TaskHeatmap({ scheduledTasks, setScheduledTasks, days })
             task={task}
             days={days}
             color={TASK_COLORS[idx % TASK_COLORS.length]}
-            year={year}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
           />
         ))}
       </div>

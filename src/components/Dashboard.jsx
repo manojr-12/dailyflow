@@ -106,7 +106,7 @@ export default function Dashboard({ days, scheduledTasks, setScheduledTasks, set
         </div>
       </div>
 
-      <TaskHeatmap scheduledTasks={scheduledTasks} setScheduledTasks={setScheduledTasks} days={days} />
+      <TaskHeatmap scheduledTasks={scheduledTasks} days={days} />
 
       <div className="dash-section">
         <h3 className="dash-section-title">Recent Journal Entries</h3>

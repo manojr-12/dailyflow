@@ -159,6 +159,11 @@ body {
   display: block;
 }
 
+/* Hamburger hidden on desktop */
+.hamburger {
+  display: none;
+}
+
 /* ===== View Common ===== */
 .view {
   max-width: 1100px;
@@ -223,9 +228,12 @@ body {
   color: var(--text-muted);
 }
 
-.badge-green { background: var(--green-light); color: var(--green); }
-.badge-orange { background: var(--orange-light); color: var(--orange); }
-.badge-blue { background: var(--blue-light); color: var(--blue); }
+.badge-green,
+.badge-orange,
+.badge-blue {
+  background: var(--surface);
+  color: var(--text-muted);
+}
 
 .task-summary {
   display: flex;
@@ -364,6 +372,25 @@ body {
   height: 10px;
   border-radius: 50%;
   flex-shrink: 0;
+}
+
+.priority-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--pcolor, #999);
+  flex-shrink: 0;
+  position: relative;
+  cursor: default;
+}
+
+.priority-indicator::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pcolor, #999);
+  opacity: 0.25;
 }
 
 .task-title-input {
@@ -1249,6 +1276,68 @@ body {
   cursor: not-allowed;
 }
 
+/* ===== Recurring Tasks Page ===== */
+.recurring-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.recurring-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 18px 24px;
+  transition: all 0.15s;
+}
+
+.recurring-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.recurring-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.recurring-color-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.recurring-title {
+  flex: 1;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.recurring-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.recurring-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.recurring-edit-fields {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.recurring-edit-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 /* ===== Task Heatmap (Recurring Task Progress) ===== */
 .task-heatmap-section-header {
   display: flex;
@@ -1527,6 +1616,22 @@ body {
   gap: 3px;
 }
 
+/* Add extra left margin on weeks that start a new month */
+.th-week-month-start {
+  margin-left: 6px;
+}
+
+/* Month label spacing to match the grid */
+.th-month-gap {
+  margin-left: 6px;
+}
+
+.th-range-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
 .th-cell {
   width: 13px;
   height: 13px;
@@ -1584,38 +1689,136 @@ body {
 
 /* ===== Responsive ===== */
 @media (max-width: 768px) {
+  /* Sidebar becomes top nav bar with hamburger menu */
   .sidebar {
-    width: 60px;
-    padding: 16px 8px;
+    width: 100%;
+    height: auto;
+    position: fixed;
+    top: 0;
+    bottom: auto;
+    left: 0;
+    right: 0;
+    flex-direction: row;
+    align-items: center;
+    padding: 12px 16px;
+    z-index: 30;
+    border-bottom: 1px solid #e8e8e8;
+    gap: 0;
+    background: var(--bg);
   }
 
-  .sidebar-header .date-today,
-  .nav-label,
-  .sidebar-footer .btn-secondary {
+  .sidebar-header {
+    margin-bottom: 0;
+    margin-right: auto;
+    flex-shrink: 0;
+  }
+
+  .sidebar-header .date-today {
     display: none;
   }
 
-  .sidebar-footer {
-    align-items: center;
+  .logo {
+    font-size: 1.1rem;
+    margin-bottom: 0;
   }
 
-  .file-import-label {
-    font-size: 0.7rem;
-    text-align: center;
+  /* Hamburger button - hidden on desktop, shown on mobile */
+  .hamburger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    padding: 0;
+    flex-shrink: 0;
+  }
+
+  .hamburger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--text);
+    border-radius: 2px;
+    transition: all 0.25s;
+    margin: 0 auto;
+  }
+
+  /* Hamburger to X animation when menu is open */
+  .sidebar.menu-open .hamburger span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+
+  .sidebar.menu-open .hamburger span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .sidebar.menu-open .hamburger span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  /* Nav becomes dropdown */
+  .nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    background: var(--bg);
+    border-bottom: 1px solid #e8e8e8;
+    padding: 8px 16px;
+    gap: 2px;
+    box-shadow: var(--shadow-md);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.25s ease, padding 0.25s ease;
+    padding-top: 0;
+    padding-bottom: 0;
+  }
+
+  .nav.nav-open {
+    max-height: 320px;
+    padding: 12px 16px;
+  }
+
+  .nav-item {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    white-space: nowrap;
+    border-radius: var(--radius-xs);
+    text-align: left;
+  }
+
+  .sidebar-footer {
+    display: none;
   }
 
   .main-content {
-    margin-left: 60px;
-    padding: 24px 16px;
-    max-width: calc(100vw - 60px);
+    margin-left: 0;
+    padding: 60px 16px 24px;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 
   .view-header {
     flex-direction: column;
+    margin-top: 20px;
   }
 
   .dash-stats {
     grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .dash-stat-card {
+    padding: 16px;
+  }
+
+  .dash-stat-value {
+    font-size: 1.4rem;
   }
 
   .add-task-row {
@@ -1632,7 +1835,7 @@ body {
 
   .fab {
     bottom: 20px;
-    right: 20px;
+    right: 16px;
     width: 50px;
     height: 50px;
     font-size: 1.5rem;
@@ -1658,5 +1861,186 @@ body {
 
   .modal-time-field select {
     width: 100%;
+  }
+
+  /* Task items */
+  .task-item {
+    padding: 12px 14px;
+    gap: 10px;
+  }
+
+  .task-title-input {
+    font-size: 0.85rem;
+  }
+
+  .btn-icon {
+    padding: 4px 8px;
+    font-size: 0.7rem;
+  }
+
+  /* Recurring tasks */
+  .recurring-card {
+    padding: 14px 16px;
+  }
+
+  .recurring-card-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .recurring-title {
+    font-size: 0.85rem;
+    flex-basis: 100%;
+    order: 3;
+  }
+
+  .recurring-edit-fields {
+    flex-direction: column;
+  }
+
+  .recurring-edit-fields .form-field {
+    width: 100%;
+  }
+
+  .recurring-edit-fields .form-field select {
+    width: 100%;
+  }
+
+  /* Heatmap */
+  .task-heatmap-card {
+    padding: 16px;
+  }
+
+  .task-heatmap-stats {
+    gap: 16px;
+  }
+
+  .th-stat-value {
+    font-size: 1.1rem;
+  }
+
+  .task-heatmap-scroll {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Journal */
+  .journal-card {
+    padding: 16px;
+  }
+
+  .journal-textarea {
+    font-size: 0.85rem;
+    padding: 12px;
+  }
+
+  /* Quick actions */
+  .quick-actions {
+    flex-direction: column;
+  }
+
+  .quick-action-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  /* Recent journals */
+  .recent-journal-item {
+    padding: 12px 14px;
+  }
+
+  .rj-snippet {
+    font-size: 0.78rem;
+  }
+
+  /* Calendar in modal */
+  .calendar-day {
+    font-size: 0.72rem;
+  }
+
+  /* Modal repeat config */
+  .modal-repeat-row,
+  .modal-priority-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .modal-repeat-select {
+    width: 100%;
+  }
+
+  .modal-repeat-config {
+    padding-left: 0;
+  }
+
+  .modal-repeat-config select {
+    width: 100%;
+  }
+
+  /* Task summary badges */
+  .task-summary {
+    gap: 6px;
+  }
+
+  .badge {
+    font-size: 0.68rem;
+    padding: 3px 10px;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 40px 16px;
+  }
+
+  .empty-state p {
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 420px) {
+  .main-content {
+    padding: 60px 12px 16px;
+  }
+
+  .dash-stats {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dash-stat-value {
+    font-size: 1.2rem;
+  }
+
+  .view-title {
+    font-size: 1.2rem;
+  }
+
+  .task-heatmap-stats {
+    gap: 12px;
+  }
+
+  .th-stat-value {
+    font-size: 1rem;
+  }
+
+  .th-stat-label {
+    font-size: 0.62rem;
+  }
+
+  .modal-header {
+    padding: 16px 16px 8px;
+  }
+
+  .modal-body {
+    padding: 0 16px;
+  }
+
+  .modal-footer {
+    padding: 12px 16px 16px;
+  }
+
+  .modal-btn-cancel,
+  .modal-btn-apply {
+    padding: 8px 16px;
+    font-size: 0.8rem;
   }
 }
