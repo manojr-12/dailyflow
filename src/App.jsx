@@ -171,7 +171,6 @@ function App() {
             setSelectedDate={handleSetSelectedDate}
             days={days}
             setDays={setDays}
-            journalLock={journalLock}
           />
         )
       case 'recurring':
@@ -188,6 +187,7 @@ function App() {
             setSelectedDate={handleSetSelectedDate}
             days={days}
             setDays={setDays}
+            journalLock={journalLock}
           />
         )
       default:
