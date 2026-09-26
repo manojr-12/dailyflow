@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { fullPrettyDate, addDaysKey, isToday } from '../utils/date'
 
 const JOURNAL_FIELDS = [
@@ -21,7 +22,155 @@ const JOURNAL_FIELDS = [
   },
 ]
 
-export default function Journal({ selectedDate, setSelectedDate, days, setDays }) {
+function JournalLockScreen({ journalLock }) {
+  const [showPinSetup, setShowPinSetup] = useState(false)
+  const [pin, setPin] = useState('')
+  const [confirmPin, setConfirmPin] = useState('')
+
+  const handlePinSetup = async (event) => {
+    event.preventDefault()
+    if (pin !== confirmPin) return
+    const unlocked = await journalLock.setupPin(pin)
+    if (unlocked) {
+      setPin('')
+      setConfirmPin('')
+    }
+  }
+
+  const handlePinUnlock = async (event) => {
+    event.preventDefault()
+    const unlocked = await journalLock.unlockWithPin(pin)
+    if (unlocked) setPin('')
+  }
+
+  const handlePinChange = (setter) => (event) => {
+    setter(event.target.value.replace(/\D/g, '').slice(0, 6))
+    journalLock.clearError()
+  }
+
+  const pinMismatch = showPinSetup && confirmPin.length === 6 && pin !== confirmPin
+
+  return (
+    <div className="journal-lock-panel">
+      <div className="journal-lock-mark" aria-hidden="true">J</div>
+      <h2>{journalLock.isConfigured ? 'Journal locked' : 'Protect your journal'}</h2>
+      <p>
+        {journalLock.isConfigured
+          ? 'Verify it is you to open your private entries.'
+          : 'Use your device lock or a private PIN each time you open the journal.'}
+      </p>
+
+      {!journalLock.isConfigured && !showPinSetup && (
+        <div className="journal-lock-actions">
+          <button
+            className="journal-lock-primary"
+            onClick={journalLock.setupDeviceLock}
+            disabled={journalLock.deviceLockAvailable !== true || journalLock.isBusy}
+          >
+            {journalLock.isBusy ? 'Waiting for device...' : 'Use device lock'}
+          </button>
+          <button
+            className="journal-lock-secondary"
+            onClick={() => {
+              setShowPinSetup(true)
+              journalLock.clearError()
+            }}
+          >
+            Use a 6-digit PIN
+          </button>
+          {journalLock.deviceLockAvailable === false && (
+            <span className="journal-lock-note">
+              Device verification is not available here. You can still use a PIN.
+            </span>
+          )}
+        </div>
+      )}
+
+      {!journalLock.isConfigured && showPinSetup && (
+        <form className="journal-pin-form" onSubmit={handlePinSetup}>
+          <label htmlFor="journal-pin-new">Choose PIN</label>
+          <input
+            id="journal-pin-new"
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            value={pin}
+            onChange={handlePinChange(setPin)}
+            maxLength={6}
+            autoFocus
+          />
+          <label htmlFor="journal-pin-confirm">Confirm PIN</label>
+          <input
+            id="journal-pin-confirm"
+            type="password"
+            inputMode="numeric"
+            autoComplete="new-password"
+            value={confirmPin}
+            onChange={handlePinChange(setConfirmPin)}
+            maxLength={6}
+          />
+          {pinMismatch && <span className="journal-lock-error">The PINs do not match.</span>}
+          <button
+            className="journal-lock-primary"
+            type="submit"
+            disabled={pin.length !== 6 || confirmPin.length !== 6 || pinMismatch || journalLock.isBusy}
+          >
+            Save PIN
+          </button>
+          <button
+            className="journal-lock-secondary"
+            type="button"
+            onClick={() => {
+              setShowPinSetup(false)
+              setPin('')
+              setConfirmPin('')
+              journalLock.clearError()
+            }}
+          >
+            Back
+          </button>
+        </form>
+      )}
+
+      {journalLock.isConfigured && journalLock.mode === 'device' && (
+        <button
+          className="journal-lock-primary"
+          onClick={journalLock.unlockWithDevice}
+          disabled={journalLock.isBusy}
+        >
+          {journalLock.isBusy ? 'Verifying...' : 'Unlock journal'}
+        </button>
+      )}
+
+      {journalLock.isConfigured && journalLock.mode === 'pin' && (
+        <form className="journal-pin-form" onSubmit={handlePinUnlock}>
+          <label htmlFor="journal-pin-unlock">Journal PIN</label>
+          <input
+            id="journal-pin-unlock"
+            type="password"
+            inputMode="numeric"
+            autoComplete="current-password"
+            value={pin}
+            onChange={handlePinChange(setPin)}
+            maxLength={6}
+            autoFocus
+          />
+          <button
+            className="journal-lock-primary"
+            type="submit"
+            disabled={pin.length !== 6 || journalLock.isBusy}
+          >
+            {journalLock.isBusy ? 'Checking...' : 'Unlock journal'}
+          </button>
+        </form>
+      )}
+
+      {journalLock.error && <span className="journal-lock-error">{journalLock.error}</span>}
+    </div>
+  )
+}
+
+export default function Journal({ selectedDate, setSelectedDate, days, setDays, journalLock }) {
   const dayData = days[selectedDate] || { tasks: [], journal: { worked: '', didntWork: '', improve: '' } }
   const journal = dayData.journal || { worked: '', didntWork: '', improve: '' }
 
@@ -33,6 +182,14 @@ export default function Journal({ selectedDate, setSelectedDate, days, setDays }
         journal: { ...journal, [key]: value },
       },
     }))
+  }
+
+  if (!journalLock.isConfigured || !journalLock.isUnlocked) {
+    return (
+      <div className="view journal-view">
+        <JournalLockScreen journalLock={journalLock} />
+      </div>
+    )
   }
 
   return (
@@ -49,6 +206,9 @@ export default function Journal({ selectedDate, setSelectedDate, days, setDays }
           )}
           <button className="btn-today" onClick={() => setSelectedDate(addDaysKey(selectedDate, 0))}>
             Today
+          </button>
+          <button className="journal-lock-now" onClick={journalLock.lock}>
+            Lock
           </button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocalStorage } from './hooks/useLocalStorage'
+import { useJournalLock } from './hooks/useJournalLock'
 import { todayKey } from './utils/date'
 import { generateTasksForDate } from './utils/schedule'
 import Sidebar from './components/Sidebar'
@@ -16,6 +17,13 @@ function App() {
   const [activeView, setActiveView] = useState('dashboard')
   const [selectedDate, setSelectedDate] = useState(todayKey())
   const [modalOpen, setModalOpen] = useState(false)
+  const journalLock = useJournalLock()
+
+  useEffect(() => {
+    if (activeView !== 'journal' && journalLock.isUnlocked) {
+      journalLock.lock()
+    }
+  }, [activeView, journalLock])
 
   // Auto-generate scheduled tasks for today on app load
   useEffect(() => {
@@ -99,6 +107,11 @@ function App() {
   )
 
   const handleExport = () => {
+    if (journalLock.isConfigured && !journalLock.isUnlocked) {
+      setActiveView('journal')
+      return
+    }
+
     const data = JSON.stringify(
       { days, scheduledTasks, exportDate: new Date().toISOString() },
       null,
@@ -114,6 +127,11 @@ function App() {
   }
 
   const handleImport = (file) => {
+    if (journalLock.isConfigured && !journalLock.isUnlocked) {
+      setActiveView('journal')
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (e) => {
       try {
@@ -142,6 +160,8 @@ function App() {
             setScheduledTasks={setScheduledTasks}
             setActiveView={setActiveView}
             setSelectedDate={handleSetSelectedDate}
+            isJournalConfigured={journalLock.isConfigured}
+            isJournalUnlocked={journalLock.isUnlocked}
           />
         )
       case 'tasks':
@@ -151,6 +171,7 @@ function App() {
             setSelectedDate={handleSetSelectedDate}
             days={days}
             setDays={setDays}
+            journalLock={journalLock}
           />
         )
       case 'recurring':
@@ -175,6 +196,8 @@ function App() {
             days={days}
             setActiveView={setActiveView}
             setSelectedDate={handleSetSelectedDate}
+            isJournalConfigured={journalLock.isConfigured}
+            isJournalUnlocked={journalLock.isUnlocked}
           />
         )
     }

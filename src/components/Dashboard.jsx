@@ -1,7 +1,15 @@
 import { lastNDays, prettyDate, fullPrettyDate, todayKey } from '../utils/date'
 import TaskHeatmap from './TaskHeatmap'
 
-export default function Dashboard({ days, scheduledTasks, setScheduledTasks, setActiveView, setSelectedDate }) {
+export default function Dashboard({
+  days,
+  scheduledTasks,
+  setScheduledTasks,
+  setActiveView,
+  setSelectedDate,
+  isJournalConfigured,
+  isJournalUnlocked,
+}) {
   const today = todayKey()
   const todayData = days[today] || { tasks: [], journal: { worked: '', didntWork: '', improve: '' } }
   const todayTasks = todayData.tasks || []
@@ -29,13 +37,14 @@ export default function Dashboard({ days, scheduledTasks, setScheduledTasks, set
     }
   }
 
-  const recentJournals = allDays
+  const recentJournals = isJournalUnlocked ? allDays
     .filter((key) => {
       const j = days[key]?.journal
       return j && (j.worked?.trim() || j.didntWork?.trim() || j.improve?.trim())
     })
     .reverse()
     .slice(0, 3)
+    : []
 
   const goToToday = () => {
     setSelectedDate(today)
@@ -110,7 +119,21 @@ export default function Dashboard({ days, scheduledTasks, setScheduledTasks, set
 
       <div className="dash-section">
         <h3 className="dash-section-title">Recent Journal Entries</h3>
-        {recentJournals.length === 0 ? (
+        {!isJournalUnlocked ? (
+          <button
+            className="journal-dashboard-lock"
+            onClick={() => setActiveView('journal')}
+          >
+            <span className="journal-dashboard-lock-title">
+              {isJournalConfigured ? 'Journal locked' : 'Protect your journal'}
+            </span>
+            <span className="journal-dashboard-lock-copy">
+              {isJournalConfigured
+                ? 'Unlock to view your recent entries.'
+                : 'Set up device verification or a PIN before viewing entries here.'}
+            </span>
+          </button>
+        ) : recentJournals.length === 0 ? (
           <div className="empty-state small">
             <p>No journal entries yet. Start writing today.</p>
           </div>
