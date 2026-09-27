@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { fullPrettyDate, addDaysKey, isToday } from '../utils/date'
 
 const JOURNAL_FIELDS = [
@@ -22,7 +22,7 @@ const JOURNAL_FIELDS = [
   },
 ]
 
-function JournalLockScreen({ journalLock }) {
+function JournalProtectionPanel({ journalLock, onProtected, onCancel }) {
   const [showPinSetup, setShowPinSetup] = useState(false)
   const [pin, setPin] = useState('')
   const [confirmPin, setConfirmPin] = useState('')
@@ -32,6 +32,7 @@ function JournalLockScreen({ journalLock }) {
     if (pin !== confirmPin) return
     const unlocked = await journalLock.setupPin(pin)
     if (unlocked) {
+      onProtected()
       setPin('')
       setConfirmPin('')
     }
@@ -50,21 +51,25 @@ function JournalLockScreen({ journalLock }) {
 
   const pinMismatch = showPinSetup && confirmPin.length === 6 && pin !== confirmPin
 
+  const handleDeviceSetup = async () => {
+    const unlocked = await journalLock.setupDeviceLock()
+    if (unlocked) onProtected()
+  }
+
   return (
     <div className="journal-lock-panel">
-      <div className="journal-lock-mark" aria-hidden="true">J</div>
-      <h2>{journalLock.isConfigured ? 'Journal locked' : 'Protect your journal'}</h2>
+      <h2>{journalLock.isConfigured ? 'Private journal entry' : 'Protect this entry'}</h2>
       <p>
         {journalLock.isConfigured
-          ? 'Verify it is you to open your private entries.'
-          : 'Use your device lock or a private PIN each time you open the journal.'}
+          ? 'Verify it is you to view and edit this date.'
+          : 'Choose a device lock or PIN. Only entries you mark private will require it.'}
       </p>
 
       {!journalLock.isConfigured && !showPinSetup && (
         <div className="journal-lock-actions">
           <button
             className="journal-lock-primary"
-            onClick={journalLock.setupDeviceLock}
+            onClick={handleDeviceSetup}
             disabled={journalLock.deviceLockAvailable !== true || journalLock.isBusy}
           >
             {journalLock.isBusy ? 'Waiting for device...' : 'Use device lock'}
@@ -83,6 +88,9 @@ function JournalLockScreen({ journalLock }) {
               Device verification is not available here. You can still use a PIN.
             </span>
           )}
+          <button className="journal-lock-secondary" onClick={onCancel}>
+            Keep entry open
+          </button>
         </div>
       )}
 
@@ -129,6 +137,9 @@ function JournalLockScreen({ journalLock }) {
           >
             Back
           </button>
+          <button className="journal-lock-secondary" type="button" onClick={onCancel}>
+            Cancel
+          </button>
         </form>
       )}
 
@@ -171,8 +182,16 @@ function JournalLockScreen({ journalLock }) {
 }
 
 export default function Journal({ selectedDate, setSelectedDate, days, setDays, journalLock }) {
+  const [showProtectionSetup, setShowProtectionSetup] = useState(false)
   const dayData = days[selectedDate] || { tasks: [], journal: { worked: '', didntWork: '', improve: '' } }
   const journal = dayData.journal || { worked: '', didntWork: '', improve: '' }
+  const isProtected = journalLock.isProtected(selectedDate)
+  const isLocked = isProtected && !journalLock.isUnlocked
+
+  useEffect(() => {
+    setShowProtectionSetup(false)
+    journalLock.clearError()
+  }, [selectedDate, journalLock.clearError])
 
   const updateJournal = (key, value) => {
     setDays((prev) => ({
@@ -184,12 +203,18 @@ export default function Journal({ selectedDate, setSelectedDate, days, setDays, 
     }))
   }
 
-  if (!journalLock.isConfigured || !journalLock.isUnlocked) {
-    return (
-      <div className="view journal-view">
-        <JournalLockScreen journalLock={journalLock} />
-      </div>
-    )
+  const protectCurrentEntry = () => {
+    if (!journalLock.isConfigured) {
+      setShowProtectionSetup(true)
+      return
+    }
+    journalLock.protectDate(selectedDate)
+    journalLock.lock()
+  }
+
+  const finishProtectionSetup = () => {
+    journalLock.protectDate(selectedDate)
+    setShowProtectionSetup(false)
   }
 
   return (
@@ -199,20 +224,54 @@ export default function Journal({ selectedDate, setSelectedDate, days, setDays, 
           <h2 className="view-title">Daily Journal</h2>
           <p className="view-subtitle">{fullPrettyDate(selectedDate)}</p>
         </div>
-        <div className="date-nav">
-          <button onClick={() => setSelectedDate(addDaysKey(selectedDate, -1))}>Prev</button>
-          {!isToday(selectedDate) && (
-            <button onClick={() => setSelectedDate(addDaysKey(selectedDate, 1))}>Next</button>
-          )}
-          <button className="btn-today" onClick={() => setSelectedDate(addDaysKey(selectedDate, 0))}>
-            Today
-          </button>
-          <button className="journal-lock-now" onClick={journalLock.lock}>
-            Lock
-          </button>
+        <div className="journal-header-actions">
+          <div className="date-nav">
+            <button onClick={() => setSelectedDate(addDaysKey(selectedDate, -1))}>Prev</button>
+            {!isToday(selectedDate) && (
+              <button onClick={() => setSelectedDate(addDaysKey(selectedDate, 1))}>Next</button>
+            )}
+            <button className="btn-today" onClick={() => setSelectedDate(addDaysKey(selectedDate, 0))}>
+              Today
+            </button>
+          </div>
+          <div className="journal-entry-actions">
+            {!isProtected && (
+              <button className="journal-protect-entry" onClick={protectCurrentEntry}>
+                Protect entry
+              </button>
+            )}
+            {isProtected && !journalLock.isUnlocked && (
+              <span className="journal-private-badge">Private entry</span>
+            )}
+            {isProtected && journalLock.isUnlocked && (
+              <>
+                <span className="journal-private-badge">Private entry</span>
+                <button
+                  className="journal-protect-entry"
+                  onClick={() => journalLock.unprotectDate(selectedDate)}
+                >
+                  Remove protection
+                </button>
+                <button className="journal-lock-now" onClick={journalLock.lock}>
+                  Lock now
+                </button>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
+      {showProtectionSetup || isLocked ? (
+        <JournalProtectionPanel
+          journalLock={journalLock}
+          onProtected={finishProtectionSetup}
+          onCancel={() => {
+            setShowProtectionSetup(false)
+            journalLock.clearError()
+          }}
+        />
+      ) : (
+      <>
       <div className="journal-grid">
         {JOURNAL_FIELDS.map((field) => (
           <div key={field.key} className="journal-card" style={{ borderTopColor: field.color }}>
@@ -236,6 +295,8 @@ export default function Journal({ selectedDate, setSelectedDate, days, setDays, 
           self-awareness and track your growth over time.
         </p>
       </div>
+      </>
+      )}
     </div>
   )
 }

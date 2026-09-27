@@ -8,12 +8,15 @@ import Dashboard from './components/Dashboard'
 import TaskList from './components/TaskList'
 import Journal from './components/Journal'
 import RecurringTasks from './components/RecurringTasks'
+import CheckIns from './components/CheckIns'
 import AddTaskModal from './components/AddTaskModal'
 import './App.css'
 
 function App() {
   const [days, setDays] = useLocalStorage('dailyflow-days', {})
   const [scheduledTasks, setScheduledTasks] = useLocalStorage('dailyflow-scheduled', [])
+  const [checkIns, setCheckIns] = useLocalStorage('dailyflow-check-ins', [])
+  const [checkInDays, setCheckInDays] = useLocalStorage('dailyflow-check-in-days', {})
   const [activeView, setActiveView] = useState('dashboard')
   const [selectedDate, setSelectedDate] = useState(todayKey())
   const [modalOpen, setModalOpen] = useState(false)
@@ -23,7 +26,7 @@ function App() {
     if (activeView !== 'journal' && journalLock.isUnlocked) {
       journalLock.lock()
     }
-  }, [activeView, journalLock])
+  }, [activeView, journalLock.isUnlocked, journalLock.lock])
 
   // Auto-generate scheduled tasks for today on app load
   useEffect(() => {
@@ -107,13 +110,13 @@ function App() {
   )
 
   const handleExport = () => {
-    if (journalLock.isConfigured && !journalLock.isUnlocked) {
+    if (journalLock.hasProtectedEntries && !journalLock.isUnlocked) {
       setActiveView('journal')
       return
     }
 
     const data = JSON.stringify(
-      { days, scheduledTasks, exportDate: new Date().toISOString() },
+      { days, scheduledTasks, checkIns, checkInDays, exportDate: new Date().toISOString() },
       null,
       2
     )
@@ -127,7 +130,7 @@ function App() {
   }
 
   const handleImport = (file) => {
-    if (journalLock.isConfigured && !journalLock.isUnlocked) {
+    if (journalLock.hasProtectedEntries && !journalLock.isUnlocked) {
       setActiveView('journal')
       return
     }
@@ -139,6 +142,10 @@ function App() {
         if (parsed.days && typeof parsed.days === 'object') {
           setDays(parsed.days)
           if (parsed.scheduledTasks) setScheduledTasks(parsed.scheduledTasks)
+          if (Array.isArray(parsed.checkIns)) setCheckIns(parsed.checkIns)
+          if (parsed.checkInDays && typeof parsed.checkInDays === 'object') {
+            setCheckInDays(parsed.checkInDays)
+          }
           alert('Data imported successfully.')
         } else {
           alert('Invalid backup file format.')
@@ -160,8 +167,11 @@ function App() {
             setScheduledTasks={setScheduledTasks}
             setActiveView={setActiveView}
             setSelectedDate={handleSetSelectedDate}
-            isJournalConfigured={journalLock.isConfigured}
             isJournalUnlocked={journalLock.isUnlocked}
+            protectedJournalDates={journalLock.protectedDates}
+            checkIns={checkIns}
+            checkInDays={checkInDays}
+            setCheckInDays={setCheckInDays}
           />
         )
       case 'tasks':
@@ -180,6 +190,17 @@ function App() {
             setScheduledTasks={setScheduledTasks}
           />
         )
+      case 'checkins':
+        return (
+          <CheckIns
+            checkIns={checkIns}
+            setCheckIns={setCheckIns}
+            checkInDays={checkInDays}
+            setCheckInDays={setCheckInDays}
+            selectedDate={selectedDate}
+            setSelectedDate={handleSetSelectedDate}
+          />
+        )
       case 'journal':
         return (
           <Journal
@@ -196,8 +217,12 @@ function App() {
             days={days}
             setActiveView={setActiveView}
             setSelectedDate={handleSetSelectedDate}
-            isJournalConfigured={journalLock.isConfigured}
             isJournalUnlocked={journalLock.isUnlocked}
+            protectedJournalDates={journalLock.protectedDates}
+            scheduledTasks={scheduledTasks}
+            checkIns={checkIns}
+            checkInDays={checkInDays}
+            setCheckInDays={setCheckInDays}
           />
         )
     }

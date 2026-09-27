@@ -55,7 +55,7 @@ function getIntensity(done, color) {
 const WEEKDAY_LABELS = ['', 'Mon', '', 'Wed', '', 'Fri', '']
 const MONTH_LABELS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
-function SingleTaskHeatmap({ task, days, color }) {
+function SingleTaskHeatmap({ task, days, color, completedDateKeys, binary }) {
   const [tooltip, setTooltip] = useState(null)
   const weeks = getLastNWeeks(53) // ~1 year
   const today = todayKey()
@@ -67,17 +67,17 @@ function SingleTaskHeatmap({ task, days, color }) {
   let tempStreak = 0
 
   // Collect all dates with this task completed
-  const completedDates = new Set()
-  for (const [dateKey, dayData] of Object.entries(days)) {
-    const tasks = dayData?.tasks || []
-    const hasTask = tasks.some(
-      (t) => t.done && (t.scheduledId === task.id || t.title === task.title)
-    )
-    if (hasTask) {
-      completedDates.add(dateKey)
-      activeDays++
+  const completedDates = new Set(completedDateKeys || [])
+  if (!completedDateKeys) {
+    for (const [dateKey, dayData] of Object.entries(days)) {
+      const tasks = dayData?.tasks || []
+      const hasTask = tasks.some(
+        (t) => t.done && (t.scheduledId === task.id || t.title === task.title)
+      )
+      if (hasTask) completedDates.add(dateKey)
     }
   }
+  activeDays = completedDates.size
 
   // Calculate streaks from completed dates
   const sortedDates = [...completedDates].sort()
@@ -183,9 +183,11 @@ function SingleTaskHeatmap({ task, days, color }) {
                   const isFuture = date > new Date()
                   const dayData = days[dateKey]
                   const tasks = dayData?.tasks || []
-                  const doneCount = tasks.filter(
-                    (t) => t.done && (t.scheduledId === task.id || t.title === task.title)
-                  ).length
+                  const doneCount = completedDateKeys
+                    ? Number(completedDates.has(dateKey))
+                    : tasks.filter(
+                        (t) => t.done && (t.scheduledId === task.id || t.title === task.title)
+                      ).length
                   const intensity = getIntensity(doneCount, color)
 
                   return (
@@ -194,7 +196,7 @@ function SingleTaskHeatmap({ task, days, color }) {
                       className="th-cell"
                       style={{
                         backgroundColor: doneCount > 0 ? intensity.background : '#ebedf0',
-                        opacity: doneCount > 0 ? intensity.opacity : 1,
+                        opacity: doneCount > 0 ? (binary ? 1 : intensity.opacity) : 1,
                       }}
                       onMouseEnter={(e) => {
                         if (!isFuture) {
@@ -217,17 +219,28 @@ function SingleTaskHeatmap({ task, days, color }) {
         </div>
       </div>
 
-      <div className="task-heatmap-legend">
-        <span className="th-legend-text">Less</span>
-        <div className="th-legend-cells">
-          <div className="th-cell" style={{ backgroundColor: '#ebedf0' }}></div>
-          <div className="th-cell" style={{ backgroundColor: color, opacity: 0.3 }}></div>
-          <div className="th-cell" style={{ backgroundColor: color, opacity: 0.5 }}></div>
-          <div className="th-cell" style={{ backgroundColor: color, opacity: 0.75 }}></div>
-          <div className="th-cell" style={{ backgroundColor: color, opacity: 1 }}></div>
+      {binary ? (
+        <div className="task-heatmap-legend">
+          <span className="th-legend-text">Not checked in</span>
+          <div className="th-legend-cells">
+            <div className="th-cell" style={{ backgroundColor: '#ebedf0' }}></div>
+            <div className="th-cell" style={{ backgroundColor: color }}></div>
+          </div>
+          <span className="th-legend-text">Checked in</span>
         </div>
-        <span className="th-legend-text">More</span>
-      </div>
+      ) : (
+        <div className="task-heatmap-legend">
+          <span className="th-legend-text">Less</span>
+          <div className="th-legend-cells">
+            <div className="th-cell" style={{ backgroundColor: '#ebedf0' }}></div>
+            <div className="th-cell" style={{ backgroundColor: color, opacity: 0.3 }}></div>
+            <div className="th-cell" style={{ backgroundColor: color, opacity: 0.5 }}></div>
+            <div className="th-cell" style={{ backgroundColor: color, opacity: 0.75 }}></div>
+            <div className="th-cell" style={{ backgroundColor: color, opacity: 1 }}></div>
+          </div>
+          <span className="th-legend-text">More</span>
+        </div>
+      )}
 
       {tooltip && (
         <div
@@ -241,13 +254,20 @@ function SingleTaskHeatmap({ task, days, color }) {
   )
 }
 
-export default function TaskHeatmap({ scheduledTasks, days }) {
+export default function TaskHeatmap({
+  scheduledTasks,
+  days,
+  completedDatesById,
+  title = 'Recurring Task Progress',
+  emptyText = 'No recurring tasks yet. Use the + button to create one with a repeat schedule.',
+  binary = false,
+}) {
   if (!scheduledTasks || scheduledTasks.length === 0) {
     return (
       <div className="dash-section">
-        <h3 className="dash-section-title">Recurring Task Progress</h3>
+        <h3 className="dash-section-title">{title}</h3>
         <div className="empty-state small">
-          <p>No recurring tasks yet. Use the + button to create one with a repeat schedule.</p>
+          <p>{emptyText}</p>
         </div>
       </div>
     )
@@ -256,7 +276,7 @@ export default function TaskHeatmap({ scheduledTasks, days }) {
   return (
     <div className="dash-section">
       <div className="task-heatmap-section-header">
-        <h3 className="dash-section-title">Recurring Task Progress</h3>
+        <h3 className="dash-section-title">{title}</h3>
         <span className="th-range-label">Last 12 months</span>
       </div>
 
@@ -267,6 +287,8 @@ export default function TaskHeatmap({ scheduledTasks, days }) {
             task={task}
             days={days}
             color={TASK_COLORS[idx % TASK_COLORS.length]}
+            completedDateKeys={completedDatesById?.[task.id]}
+            binary={binary}
           />
         ))}
       </div>

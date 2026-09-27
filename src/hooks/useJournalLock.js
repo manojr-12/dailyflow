@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 const STORAGE_KEY = 'dailyflow-journal-lock'
+const PROTECTED_ENTRIES_KEY = 'dailyflow-protected-journals'
 const PIN_ITERATIONS = 210000
 
 function randomBytes(length) {
@@ -29,6 +30,16 @@ function readLockConfig() {
     return stored ? JSON.parse(stored) : null
   } catch {
     return null
+  }
+}
+
+function readProtectedDates() {
+  try {
+    const stored = localStorage.getItem(PROTECTED_ENTRIES_KEY)
+    const parsed = stored ? JSON.parse(stored) : []
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
   }
 }
 
@@ -74,6 +85,7 @@ function equalBytes(left, right) {
 
 export function useJournalLock() {
   const [config, setConfig] = useState(readLockConfig)
+  const [protectedDates, setProtectedDates] = useState(readProtectedDates)
   const [isUnlocked, setIsUnlocked] = useState(false)
   const [deviceLockAvailable, setDeviceLockAvailable] = useState(null)
   const [isBusy, setIsBusy] = useState(false)
@@ -111,6 +123,29 @@ export function useJournalLock() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextConfig))
     setConfig(nextConfig)
   }, [])
+
+  const updateProtectedDates = useCallback((updater) => {
+    setProtectedDates((current) => {
+      const next = updater(current)
+      localStorage.setItem(PROTECTED_ENTRIES_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [])
+
+  const protectDate = useCallback((dateKey) => {
+    updateProtectedDates((current) =>
+      current.includes(dateKey) ? current : [...current, dateKey]
+    )
+  }, [updateProtectedDates])
+
+  const unprotectDate = useCallback((dateKey) => {
+    updateProtectedDates((current) => current.filter((key) => key !== dateKey))
+  }, [updateProtectedDates])
+
+  const isProtected = useCallback(
+    (dateKey) => protectedDates.includes(dateKey),
+    [protectedDates]
+  )
 
   const setupDeviceLock = useCallback(async () => {
     setIsBusy(true)
@@ -242,32 +277,44 @@ export function useJournalLock() {
     setError('')
   }, [])
 
+  const clearError = useCallback(() => setError(''), [])
+
   return useMemo(
     () => ({
       isConfigured: Boolean(config),
       mode: config?.mode || null,
       isUnlocked,
+      protectedDates,
+      hasProtectedEntries: protectedDates.length > 0,
       deviceLockAvailable,
       isBusy,
       error,
-      clearError: () => setError(''),
+      clearError,
       setupDeviceLock,
       setupPin,
       unlockWithDevice,
       unlockWithPin,
+      protectDate,
+      unprotectDate,
+      isProtected,
       lock,
     }),
     [
       config,
+      clearError,
       deviceLockAvailable,
       error,
       isBusy,
       isUnlocked,
       lock,
+      protectDate,
+      protectedDates,
       setupDeviceLock,
       setupPin,
+      unprotectDate,
       unlockWithDevice,
       unlockWithPin,
+      isProtected,
     ]
   )
 }
