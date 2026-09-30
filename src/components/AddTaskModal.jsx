@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { formatDateKey, parseDateKey, todayKey } from '../utils/date'
 import { WEEKDAY_NAMES } from '../utils/schedule'
+import { REMINDER_OPTIONS } from '../utils/calendar'
 
 const PRIORITY_OPTIONS = [
   { value: 'high', label: 'High' },
@@ -137,6 +138,7 @@ export default function AddTaskModal({ open, onClose, onAddTask, onAddScheduled,
   const [startTime, setStartTime] = useState('09:00')
   const [endTime, setEndTime] = useState('10:00')
   const [repeat, setRepeat] = useState('none')
+  const [reminderMinutes, setReminderMinutes] = useState(10)
   const [dayOfWeek, setDayOfWeek] = useState(() => parseDateKey(selectedDate || todayKey()).getDay())
   const [dayOfMonth, setDayOfMonth] = useState(() => parseDateKey(selectedDate || todayKey()).getDate())
 
@@ -150,6 +152,7 @@ export default function AddTaskModal({ open, onClose, onAddTask, onAddScheduled,
       setStartTime('09:00')
       setEndTime('10:00')
       setRepeat('none')
+      setReminderMinutes(10)
       setDayOfWeek(parseDateKey(initialDate).getDay())
       setDayOfMonth(parseDateKey(initialDate).getDate())
     }
@@ -194,6 +197,7 @@ export default function AddTaskModal({ open, onClose, onAddTask, onAddScheduled,
         startTime,
         endTime,
         startDate: dateKey,
+        reminderMinutes,
       })
     }
 
@@ -289,6 +293,22 @@ export default function AddTaskModal({ open, onClose, onAddTask, onAddScheduled,
                 {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
                   <option key={d} value={d}>
                     {d}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {repeat !== 'none' && (
+            <div className="modal-repeat-config">
+              <label>Calendar reminder</label>
+              <select
+                value={reminderMinutes}
+                onChange={(e) => setReminderMinutes(Number(e.target.value))}
+              >
+                {REMINDER_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
                   </option>
                 ))}
               </select>

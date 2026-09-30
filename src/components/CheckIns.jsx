@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { addDaysKey, fullPrettyDate, isToday } from '../utils/date'
+import { addDaysKey, fullPrettyDate, isToday, todayKey } from '../utils/date'
 
 const SUGGESTED_CHECK_INS = ['Went to the gym', 'Woke up at 5', 'Read for 20 minutes']
 
@@ -101,7 +101,7 @@ export default function CheckIns({
           {!isToday(selectedDate) && (
             <button onClick={() => setSelectedDate(addDaysKey(selectedDate, 1))}>Next</button>
           )}
-          <button className="btn-today" onClick={() => setSelectedDate(addDaysKey(selectedDate, 0))}>
+          <button className="btn-today" onClick={() => setSelectedDate(todayKey())}>
             Today
           </button>
         </div>

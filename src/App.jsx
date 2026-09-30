@@ -9,6 +9,7 @@ import TaskList from './components/TaskList'
 import Journal from './components/Journal'
 import RecurringTasks from './components/RecurringTasks'
 import CheckIns from './components/CheckIns'
+import PendingTasks from './components/PendingTasks'
 import AddTaskModal from './components/AddTaskModal'
 import './App.css'
 
@@ -17,10 +18,59 @@ function App() {
   const [scheduledTasks, setScheduledTasks] = useLocalStorage('dailyflow-scheduled', [])
   const [checkIns, setCheckIns] = useLocalStorage('dailyflow-check-ins', [])
   const [checkInDays, setCheckInDays] = useLocalStorage('dailyflow-check-in-days', {})
+  const [pendingTasks, setPendingTasks] = useLocalStorage('dailyflow-pending-tasks', [])
   const [activeView, setActiveView] = useState('dashboard')
   const [selectedDate, setSelectedDate] = useState(todayKey())
+  const [currentDay, setCurrentDay] = useState(todayKey())
   const [modalOpen, setModalOpen] = useState(false)
   const journalLock = useJournalLock()
+
+  // Keep the app's idea of "today" fresh when it remains open overnight.
+  useEffect(() => {
+    const refreshCurrentDay = () => setCurrentDay(todayKey())
+    const timer = window.setInterval(refreshCurrentDay, 60_000)
+    window.addEventListener('focus', refreshCurrentDay)
+    document.addEventListener('visibilitychange', refreshCurrentDay)
+    return () => {
+      window.clearInterval(timer)
+      window.removeEventListener('focus', refreshCurrentDay)
+      document.removeEventListener('visibilitychange', refreshCurrentDay)
+    }
+  }, [])
+
+  // Move unfinished tasks from completed calendar days into the Pending tab.
+  useEffect(() => {
+    const overdue = []
+    let changed = false
+    const nextDays = { ...days }
+
+    Object.entries(days).forEach(([dateKey, dayData]) => {
+      if (dateKey >= currentDay || !Array.isArray(dayData?.tasks)) return
+      const unfinished = dayData.tasks.filter((task) => !task.done)
+      if (unfinished.length === 0) return
+
+      changed = true
+      overdue.push(
+        ...unfinished.map((task) => ({
+          ...task,
+          pendingId: `${dateKey}:${task.id}`,
+          originalDate: dateKey,
+          pendingSince: currentDay,
+        }))
+      )
+      nextDays[dateKey] = {
+        ...dayData,
+        tasks: dayData.tasks.filter((task) => task.done),
+      }
+    })
+
+    if (!changed) return
+    setPendingTasks((existing) => {
+      const known = new Set(existing.map((task) => task.pendingId))
+      return [...existing, ...overdue.filter((task) => !known.has(task.pendingId))]
+    })
+    setDays(nextDays)
+  }, [currentDay, days, setDays, setPendingTasks])
 
   useEffect(() => {
     if (activeView !== 'journal' && journalLock.isUnlocked) {
@@ -116,7 +166,7 @@ function App() {
     }
 
     const data = JSON.stringify(
-      { days, scheduledTasks, checkIns, checkInDays, exportDate: new Date().toISOString() },
+      { days, scheduledTasks, checkIns, checkInDays, pendingTasks, exportDate: new Date().toISOString() },
       null,
       2
     )
@@ -146,6 +196,7 @@ function App() {
           if (parsed.checkInDays && typeof parsed.checkInDays === 'object') {
             setCheckInDays(parsed.checkInDays)
           }
+          if (Array.isArray(parsed.pendingTasks)) setPendingTasks(parsed.pendingTasks)
           alert('Data imported successfully.')
         } else {
           alert('Invalid backup file format.')
@@ -188,6 +239,16 @@ function App() {
           <RecurringTasks
             scheduledTasks={scheduledTasks}
             setScheduledTasks={setScheduledTasks}
+          />
+        )
+      case 'pending':
+        return (
+          <PendingTasks
+            pendingTasks={pendingTasks}
+            setPendingTasks={setPendingTasks}
+            setDays={setDays}
+            setActiveView={setActiveView}
+            setSelectedDate={handleSetSelectedDate}
           />
         )
       case 'checkins':

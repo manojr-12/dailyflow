@@ -1,4 +1,4 @@
-import { prettyDate, fullPrettyDate, addDaysKey, isToday } from '../utils/date'
+import { prettyDate, fullPrettyDate, addDaysKey, isToday, todayKey } from '../utils/date'
 
 const PRIORITY_CONFIG = {
   high: { label: 'High', color: '#ef4444', bg: '#fee2e2' },
@@ -64,7 +64,7 @@ export default function TaskList({ selectedDate, setSelectedDate, days, setDays 
           {!isToday(selectedDate) && (
             <button onClick={() => setSelectedDate(addDaysKey(selectedDate, 1))}>Next</button>
           )}
-          <button className="btn-today" onClick={() => setSelectedDate(addDaysKey(selectedDate, 0))}>
+          <button className="btn-today" onClick={() => setSelectedDate(todayKey())}>
             Today
           </button>
         </div>

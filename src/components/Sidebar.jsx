@@ -4,6 +4,7 @@ import { todayKey, fullPrettyDate } from '../utils/date'
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'tasks', label: "Today's Tasks" },
+  { id: 'pending', label: 'Pending Tasks' },
   { id: 'recurring', label: 'Recurring' },
   { id: 'checkins', label: 'Check-ins' },
   { id: 'journal', label: 'Journal' },

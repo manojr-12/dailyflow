@@ -455,6 +455,65 @@ body {
   background: var(--accent-light);
 }
 
+/* ===== Pending Tasks ===== */
+.pending-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.pending-select-all {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  margin-right: auto;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.pending-select-all input {
+  accent-color: var(--accent);
+}
+
+.pending-toolbar button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pending-toolbar .btn-primary,
+.pending-toolbar .btn-secondary {
+  width: 140px;
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+.pending-task-copy {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.pending-task-copy strong {
+  overflow-wrap: anywhere;
+}
+
+.pending-task-copy small {
+  color: var(--text-light);
+  margin-top: 2px;
+}
+
+.pending-move-one {
+  white-space: nowrap;
+}
+
 /* ===== Empty State ===== */
 .empty-state {
   text-align: center;
@@ -1221,6 +1280,22 @@ body {
   color: var(--text);
 }
 
+.form-field input[type="time"] {
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: var(--radius-xs);
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  outline: none;
+}
+
+.form-field input[type="time"]:focus {
+  border-color: var(--accent);
+}
+
 .form-field select:focus {
   border-color: var(--accent);
 }
@@ -1711,6 +1786,28 @@ body {
   display: flex;
   gap: 2px;
   flex-shrink: 0;
+}
+
+.recurring-calendar-all {
+  min-height: 38px;
+  padding: 8px 14px;
+  cursor: pointer;
+}
+
+.recurring-time-badge,
+.recurring-reminder-badge {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.recurring-calendar-btn:hover {
+  color: var(--accent);
+  background: var(--accent-light);
+}
+
+.recurring-calendar-btn {
+  opacity: 1;
+  color: var(--accent);
 }
 
 .recurring-edit-form {
@@ -2266,6 +2363,19 @@ body {
     font-size: 0.85rem;
   }
 
+  .pending-task-item {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .pending-task-copy {
+    flex-basis: calc(100% - 60px);
+  }
+
+  .pending-move-one {
+    width: 100%;
+  }
+
   .btn-icon {
     padding: 4px 8px;
     font-size: 0.7rem;
@@ -2283,8 +2393,18 @@ body {
 
   .recurring-title {
     font-size: 0.85rem;
-    flex-basis: 100%;
-    order: 3;
+    flex-basis: calc(100% - 52px);
+    order: 0;
+  }
+
+  .recurring-card-header > .badge {
+    order: 1;
+  }
+
+  .recurring-actions {
+    width: 100%;
+    justify-content: flex-start;
+    order: 2;
   }
 
   .recurring-edit-fields {
