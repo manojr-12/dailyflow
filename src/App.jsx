@@ -223,6 +223,7 @@ function App() {
             checkIns={checkIns}
             checkInDays={checkInDays}
             setCheckInDays={setCheckInDays}
+            pendingTasks={pendingTasks}
           />
         )
       case 'tasks':
@@ -284,6 +285,7 @@ function App() {
             checkIns={checkIns}
             checkInDays={checkInDays}
             setCheckInDays={setCheckInDays}
+            pendingTasks={pendingTasks}
           />
         )
     }

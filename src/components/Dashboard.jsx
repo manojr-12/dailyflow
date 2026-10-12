@@ -12,6 +12,7 @@ export default function Dashboard({
   checkIns,
   checkInDays,
   setCheckInDays,
+  pendingTasks = [],
 }) {
   const today = todayKey()
   const todayData = days[today] || { tasks: [], journal: { worked: '', didntWork: '', improve: '' } }
@@ -19,25 +20,14 @@ export default function Dashboard({
   const completedToday = todayTasks.filter((t) => t.done).length
   const pendingToday = todayTasks.length - completedToday
   const completionRate = todayTasks.length > 0 ? Math.round((completedToday / todayTasks.length) * 100) : 0
-
-  const last7 = lastNDays(7)
-  const last7Tasks = last7.reduce((sum, key) => sum + (days[key]?.tasks?.length || 0), 0)
-  const last7Done = last7.reduce(
-    (sum, key) => sum + (days[key]?.tasks?.filter((t) => t.done).length || 0),
-    0
-  )
-  const last7Rate = last7Tasks > 0 ? Math.round((last7Done / last7Tasks) * 100) : 0
+  const nextTask = todayTasks.find((task) => !task.done)
 
   const allDays = lastNDays(119)
   let streak = 0
   for (let i = allDays.length - 1; i >= 0; i--) {
-    const d = days[allDays[i]]
-    const done = d?.tasks?.filter((t) => t.done).length || 0
-    if (done > 0) {
-      streak++
-    } else if (allDays[i] !== allDays[allDays.length - 1]) {
-      break
-    }
+    const done = days[allDays[i]]?.tasks?.some((task) => task.done)
+    if (done) streak++
+    else if (allDays[i] !== today) break
   }
 
   const protectedDates = new Set(protectedJournalDates || [])
@@ -77,31 +67,52 @@ export default function Dashboard({
         </div>
       </div>
 
+      <div className="dash-metrics" aria-label="Today at a glance">
+        <button className="dash-metric" onClick={goToToday}>
+          <span className="dash-metric-value">{todayTasks.length}</span>
+          <span className="dash-metric-label">Today’s tasks</span>
+        </button>
+        <button className="dash-metric" onClick={goToToday}>
+          <span className="dash-metric-value">{completedToday}</span>
+          <span className="dash-metric-label">Completed</span>
+        </button>
+        <button className="dash-metric" onClick={goToToday}>
+          <span className="dash-metric-value">{pendingToday}</span>
+          <span className="dash-metric-label">Remaining</span>
+        </button>
+        <div className="dash-metric">
+          <span className="dash-metric-value">{streak}<span className="dash-metric-unit">d</span></span>
+          <span className="dash-metric-label">Current streak</span>
+        </div>
+      </div>
+
       <div className="dash-stats">
-        <div className="dash-stat-card" onClick={goToToday}>
-          <span className="dash-stat-value">{todayTasks.length}</span>
-          <span className="dash-stat-label">Today's Tasks</span>
-        </div>
-        <div className="dash-stat-card">
-          <span className="dash-stat-value">{completedToday}</span>
-          <span className="dash-stat-label">Completed Today</span>
-        </div>
-        <div className="dash-stat-card">
-          <span className="dash-stat-value">{pendingToday}</span>
-          <span className="dash-stat-label">Pending Today</span>
-        </div>
-        <div className="dash-stat-card">
-          <span className="dash-stat-value">{streak}</span>
-          <span className="dash-stat-label">Day Streak</span>
-        </div>
-        <div className="dash-stat-card">
-          <span className="dash-stat-value">{completionRate}%</span>
-          <span className="dash-stat-label">Today's Rate</span>
-        </div>
-        <div className="dash-stat-card">
-          <span className="dash-stat-value">{last7Rate}%</span>
-          <span className="dash-stat-label">7-Day Rate</span>
-        </div>
+        <button className="dash-focus-card dash-focus-next" onClick={goToToday}>
+          <span className="dash-focus-eyebrow">UP NEXT</span>
+          <strong className="dash-focus-title">
+            {nextTask ? nextTask.title : todayTasks.length ? 'You’re all caught up' : 'Plan your day'}
+          </strong>
+          <span className="dash-focus-detail">
+            {nextTask
+              ? `${pendingToday} task${pendingToday === 1 ? '' : 's'} left today`
+              : todayTasks.length ? 'Everything on today’s list is done' : 'Add a task to get started'}
+          </span>
+          <span className="dash-focus-action">{nextTask ? 'Open today’s tasks →' : 'View today’s tasks →'}</span>
+        </button>
+        <button className="dash-focus-card" onClick={() => setActiveView('pending')}>
+          <span className="dash-focus-eyebrow">CARRY OVER</span>
+          <strong className="dash-focus-number">{pendingTasks.length}</strong>
+          <span className="dash-focus-detail">unfinished from earlier days</span>
+          <span className="dash-focus-action">Review pending tasks →</span>
+        </button>
+        <button className="dash-focus-card" onClick={() => setActiveView('checkins')}>
+          <span className="dash-focus-eyebrow">DAILY CHECK-INS</span>
+          <strong className="dash-focus-number">{completedCheckIns}<span> / {checkIns.length}</span></strong>
+          <span className="dash-focus-detail">
+            {checkIns.length ? `${checkIns.length - completedCheckIns} left to check off` : 'Build a small daily routine'}
+          </span>
+          <span className="dash-focus-action">{checkIns.length ? 'Update check-ins →' : 'Set up check-ins →'}</span>
+        </button>
       </div>
 
       <div className="dash-section">
