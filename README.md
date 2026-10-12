@@ -1,6 +1,8 @@
 # DailyFlow
 
 DailyFlow is a personal daily planner for organizing tasks, routines, check-ins, and journal notes. It runs in your browser and saves your data locally on the device.
+<img width="3444" height="1942" alt="image" src="https://github.com/user-attachments/assets/f620847d-eb4b-4387-b72a-421e3876a38b" />
+
 
 ## Features
 
